@@ -6,11 +6,12 @@ nfs:
 # Namespace configuration
 namespace: "bell-test"
 
-# PersistentVolume configuration
+# PersistentVolume configuration (must be pre-created by cluster admin)
 pv:
-  name: "nfs-pv"
+  name: "ndex-nfs-pv"
   storage: "1Gi"
   reclaimPolicy: "Retain"
+  selectorLabel: "ndex-nfs"  # Label to match pre-created PV
 
 # PersistentVolumeClaim configuration
 pvc:

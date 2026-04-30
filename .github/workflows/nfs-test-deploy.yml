@@ -97,9 +97,7 @@ jobs:
           echo "Uninstalling Helm release..."
           helm uninstall ${{ env.RELEASE_NAME }} -n ${{ secrets.OPENSHIFT_PROJECT }} || echo "Release not found"
           
-          # Delete PersistentVolume (cluster-scoped resource)
-          echo "Deleting PersistentVolume..."
-          oc delete pv nfs-pv --ignore-not-found=true
+          # Note: PV (ndex-nfs-pv) is managed by cluster admin and should not be deleted
           
           echo "✓ Teardown completed successfully"
 

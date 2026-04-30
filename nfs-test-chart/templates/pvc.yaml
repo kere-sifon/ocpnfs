@@ -14,5 +14,3 @@ spec:
     requests:
       storage: {{ .Values.pvc.storage }}
   volumeName: {{ .Values.pv.name }}
-
-# Made with Bob
