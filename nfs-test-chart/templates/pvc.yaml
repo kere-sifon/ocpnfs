@@ -10,6 +10,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
+  storageClassName: ""  # Empty string to match PV with no storageClassName
   resources:
     requests:
       storage: {{ .Values.pvc.storage }}
