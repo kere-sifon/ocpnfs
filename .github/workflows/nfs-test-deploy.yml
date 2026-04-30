@@ -58,14 +58,11 @@ jobs:
         run: |
           echo "Checking for existing resources..."
           
-          # Delete pod if exists (to allow PVC deletion)
+          # Delete pod if exists (CSI inline volume is cleaned up with pod)
           oc delete pod nfs-test-pod --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
           
-          # Delete PVC if exists (to recreate with correct storageClassName)
-          oc delete pvc nfs-pvc --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
-          
-          # Wait a moment for resources to be deleted
-          sleep 5
+          # Wait a moment for pod to be deleted
+          sleep 3
           
           echo "✓ Cleanup completed"
 

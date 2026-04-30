@@ -6,18 +6,6 @@ nfs:
 # Namespace configuration
 namespace: "bell-test"
 
-# PersistentVolume configuration (must be pre-created by cluster admin)
-pv:
-  name: "ndex-nfs-pv"
-  storage: "1Gi"
-  reclaimPolicy: "Retain"
-  selectorLabel: "ndex-nfs"  # Label to match pre-created PV
-
-# PersistentVolumeClaim configuration
-pvc:
-  name: "nfs-pvc"
-  storage: "1Gi"
-
 # Pod configuration
 pod:
   name: "nfs-test-pod"
@@ -27,5 +15,9 @@ pod:
 # ServiceAccount configuration
 serviceAccount:
   name: "nfs-sa"
+
+# CSI inline volume configuration
+# No PV or PVC needed - volume is created inline in the pod spec
+# Requires nfs.csi.k8s.io CSI driver to be installed in the cluster
 
 # Made with Bob

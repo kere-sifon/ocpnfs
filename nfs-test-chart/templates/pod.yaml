@@ -11,7 +11,7 @@ spec:
   serviceAccountName: {{ .Values.serviceAccount.name }}
   restartPolicy: Never
   containers:
-  - name: nfs-test
+  - name: nfs-test-csi
     image: {{ .Values.pod.image }}
     command:
     - /bin/bash
@@ -44,7 +44,10 @@ spec:
       mountPath: {{ .Values.pod.mountPath }}
   volumes:
   - name: nfs-volume
-    persistentVolumeClaim:
-      claimName: {{ .Values.pvc.name }}
+    csi:
+      driver: nfs.csi.k8s.io
+      volumeAttributes:
+        server: {{ .Values.nfs.server }}
+        share: {{ .Values.nfs.path }}
 
 # Made with Bob
