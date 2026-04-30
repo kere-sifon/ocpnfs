@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Values.pod.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  serviceAccountName: {{ .Values.serviceAccount.name }}
+  restartPolicy: Never
+  containers:
+  - name: nfs-test
+    image: {{ .Values.pod.image }}
+    command:
+    - /bin/bash
+    - -c
+    - |
+      set -e
+      echo "=== NFS Mount Test Started ==="
+      echo "Mount point: {{ .Values.pod.mountPath }}"
+      echo "Testing write access..."
+      
+      # Write test
+      TEST_FILE="{{ .Values.pod.mountPath }}/test-$(date +%s).txt"
+      echo "Test data written at $(date)" > "$TEST_FILE"
+      echo "✓ Write test successful: $TEST_FILE"
+      
+      # Read test
+      echo "Testing read access..."
+      cat "$TEST_FILE"
+      echo "✓ Read test successful"
+      
+      # List directory
+      echo "Directory contents:"
+      ls -la {{ .Values.pod.mountPath }}
+      
+      echo "=== NFS Mount Test Completed Successfully ==="
+      echo "Sleeping for 3600 seconds..."
+      sleep 3600
+    volumeMounts:
+    - name: nfs-volume
+      mountPath: {{ .Values.pod.mountPath }}
+  volumes:
+  - name: nfs-volume
+    persistentVolumeClaim:
+      claimName: {{ .Values.pvc.name }}
+
+# Made with Bob

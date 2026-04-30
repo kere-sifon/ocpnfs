@@ -1,0 +1,30 @@
+# NFS server configuration
+nfs:
+  server: ""  # Will be set from NFS_SERVER_IP secret
+  path: "/exports/ndex/data"
+
+# Namespace configuration
+namespace: "nfs-test"
+
+# PersistentVolume configuration
+pv:
+  name: "nfs-pv"
+  storage: "1Gi"
+  reclaimPolicy: "Retain"
+
+# PersistentVolumeClaim configuration
+pvc:
+  name: "nfs-pvc"
+  storage: "1Gi"
+
+# Pod configuration
+pod:
+  name: "nfs-test-pod"
+  image: "registry.access.redhat.com/ubi8/ubi:latest"
+  mountPath: "/mnt/nfs"
+
+# ServiceAccount configuration
+serviceAccount:
+  name: "nfs-sa"
+
+# Made with Bob
