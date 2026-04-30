@@ -18,24 +18,24 @@ on:
         default: 'deploy'
 
 env:
-  NAMESPACE: nfs-test
   CHART_PATH: ./nfs-test-chart
   RELEASE_NAME: nfs-test
 
 jobs:
   nfs-test:
-    runs-on: self-hosted
+    runs-on: oc-run
+    permissions:
+      contents: read
+      pull-requests: write
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Login to OpenShift
         run: |
-          oc login https://api.crc.testing:6443 \
-            --username=kubeadmin \
-            --password=${{ secrets.OCP_KUBEADMIN_PASSWORD }} \
-            --insecure-skip-tls-verify=true
+          oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }}
+          oc project ${{ secrets.OPENSHIFT_PROJECT }}
           echo "✓ Successfully logged in to OpenShift"
 
       - name: Deploy NFS Test
@@ -43,18 +43,17 @@ jobs:
         run: |
           echo "=== Deploying NFS Test Chart ==="
           
-          # Apply hostmount-anyuid SCC to service account
-          echo "Applying hostmount-anyuid SCC to nfs-sa service account..."
-          oc adm policy add-scc-to-user hostmount-anyuid -z nfs-sa -n ${{ env.NAMESPACE }} || true
+          # NOTE: SCC hostmount-anyuid must be granted by the Bell CaaS platform team
+          # as a one-time request during namespace onboarding. Cluster-admin runs:
+          # oc adm policy add-scc-to-user hostmount-anyuid -z nfs-sa -n <namespace>
           
           # Deploy Helm chart
           echo "Installing Helm chart..."
           helm upgrade --install ${{ env.RELEASE_NAME }} ${{ env.CHART_PATH }} \
             --set nfs.server=${{ secrets.NFS_SERVER_IP }} \
-            --set namespace=${{ env.NAMESPACE }} \
+            --set namespace=${{ secrets.OPENSHIFT_PROJECT }} \
             --wait \
-            --timeout=5m \
-            --create-namespace
+            --timeout=5m
           
           echo "✓ Helm chart deployed successfully"
 
@@ -63,7 +62,7 @@ jobs:
         run: |
           echo "Waiting for pod to be ready..."
           oc wait --for=condition=Ready pod/nfs-test-pod \
-            -n ${{ env.NAMESPACE }} \
+            -n ${{ secrets.OPENSHIFT_PROJECT }} \
             --timeout=300s
           echo "✓ Pod is ready"
 
@@ -71,10 +70,23 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "=== Pod Logs ==="
-          oc logs nfs-test-pod -n ${{ env.NAMESPACE }}
+          oc logs nfs-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }}
           echo ""
           echo "=== Pod Status ==="
-          oc get pod nfs-test-pod -n ${{ env.NAMESPACE }} -o wide
+          oc get pod nfs-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} -o wide
+
+      - name: Debug pod (on failure)
+        if: failure()
+        run: |
+          echo "=== Debugging Failed Pod ==="
+          echo "Pod list:"
+          oc get pods -n ${{ secrets.OPENSHIFT_PROJECT }}
+          echo ""
+          echo "Pod description:"
+          oc describe pod nfs-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} || true
+          echo ""
+          echo "Pod logs (last 100 lines):"
+          oc logs nfs-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=100 || true
 
       - name: Teardown NFS Test
         if: github.event.inputs.action == 'teardown'
@@ -83,15 +95,11 @@ jobs:
           
           # Uninstall Helm release
           echo "Uninstalling Helm release..."
-          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} || echo "Release not found"
+          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ secrets.OPENSHIFT_PROJECT }} || echo "Release not found"
           
           # Delete PersistentVolume (cluster-scoped resource)
           echo "Deleting PersistentVolume..."
           oc delete pv nfs-pv --ignore-not-found=true
-          
-          # Delete namespace
-          echo "Deleting namespace..."
-          oc delete namespace ${{ env.NAMESPACE }} --ignore-not-found=true
           
           echo "✓ Teardown completed successfully"
 
@@ -99,11 +107,9 @@ jobs:
         if: always() && github.event.inputs.action != 'teardown'
         run: |
           echo "=== Deployment Summary ==="
-          echo "Namespace: ${{ env.NAMESPACE }}"
+          echo "Namespace: ${{ secrets.OPENSHIFT_PROJECT }}"
           echo "Release: ${{ env.RELEASE_NAME }}"
           echo "NFS Server: ${{ secrets.NFS_SERVER_IP }}"
           echo ""
           echo "Resources:"
-          oc get all,pv,pvc -n ${{ env.NAMESPACE }} || true
-
-# Made with Bob
+          oc get all,pv,pvc -n ${{ secrets.OPENSHIFT_PROJECT }} || true
