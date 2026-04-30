@@ -34,8 +34,21 @@ jobs:
 
       - name: Login to OpenShift
         run: |
+          echo "Logging in to OpenShift..."
+          if [ -z "${{ secrets.OPENSHIFT_TOKEN }}" ]; then
+            echo "Error: OPENSHIFT_TOKEN secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.OPENSHIFT_SERVER }}" ]; then
+            echo "Error: OPENSHIFT_SERVER secret is not set"
+            exit 1
+          fi
+          
           oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }}
           oc project ${{ secrets.OPENSHIFT_PROJECT }}
+          
+          # Verify login
+          oc whoami
           echo "✓ Successfully logged in to OpenShift"
 
       - name: Clean up existing resources (if any)
