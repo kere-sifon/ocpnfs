@@ -8,7 +8,7 @@ namespace: "bell-test"
 
 # Pod configuration
 pod:
-  name: "nfs-test-pod"
+  name: "nfs-csi-test-pod"
   image: "registry.access.redhat.com/ubi8/ubi:latest"
   mountPath: "/mnt/nfs"
 
