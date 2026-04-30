@@ -58,38 +58,43 @@ jobs:
         run: |
           echo "Checking for existing resources..."
           
-          # Delete pod if exists (CSI inline volume is cleaned up with pod)
-          oc delete pod nfs-csi-test-pod --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
+          # Delete pod if exists
+          oc delete pod nfs-dynamic-test-pod --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
           
-          # Wait a moment for pod to be deleted
-          sleep 3
+          # Delete PVC if exists (PV will be auto-deleted by dynamic provisioner)
+          oc delete pvc nfs-dynamic-pvc --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
+          
+          # Wait for resources to be deleted
+          sleep 5
           
           echo "✓ Cleanup completed"
 
       - name: Deploy NFS Test
         if: github.event.inputs.action != 'teardown'
         run: |
-          echo "=== Deploying NFS Test Chart ==="
+          echo "=== Deploying NFS Test Chart with Dynamic Provisioning ==="
           
           # NOTE: SCC hostmount-anyuid must be granted by the Bell CaaS platform team
           # as a one-time request during namespace onboarding. Cluster-admin runs:
           # oc adm policy add-scc-to-user hostmount-anyuid -z nfs-sa -n <namespace>
           
+          # NOTE: nfs-csi StorageClass must be pre-created by cluster admin
+          
           # Deploy Helm chart
           echo "Installing Helm chart..."
           helm upgrade --install ${{ env.RELEASE_NAME }} ${{ env.CHART_PATH }} \
-            --set nfs.server=${{ secrets.NFS_SERVER_IP }} \
             --set namespace=${{ secrets.OPENSHIFT_PROJECT }} \
             --wait \
             --timeout=5m
           
           echo "✓ Helm chart deployed successfully"
+          echo "✓ PV automatically created by nfs-csi provisioner"
 
       - name: Wait for Pod Ready
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "Waiting for pod to be ready..."
-          oc wait --for=condition=Ready pod/nfs-csi-test-pod \
+          oc wait --for=condition=Ready pod/nfs-dynamic-test-pod \
             -n ${{ secrets.OPENSHIFT_PROJECT }} \
             --timeout=300s
           echo "✓ Pod is ready"
@@ -98,10 +103,10 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "=== Pod Logs ==="
-          oc logs nfs-csi-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }}
+          oc logs nfs-dynamic-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }}
           echo ""
           echo "=== Pod Status ==="
-          oc get pod nfs-csi-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} -o wide
+          oc get pod nfs-dynamic-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} -o wide
 
       - name: Debug pod (on failure)
         if: failure()
@@ -111,10 +116,16 @@ jobs:
           oc get pods -n ${{ secrets.OPENSHIFT_PROJECT }}
           echo ""
           echo "Pod description:"
-          oc describe pod nfs-csi-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} || true
+          oc describe pod nfs-dynamic-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} || true
           echo ""
           echo "Pod logs (last 100 lines):"
-          oc logs nfs-csi-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=100 || true
+          oc logs nfs-dynamic-test-pod -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=100 || true
+          echo ""
+          echo "PVC status:"
+          oc get pvc nfs-dynamic-pvc -n ${{ secrets.OPENSHIFT_PROJECT }} || true
+          echo ""
+          echo "PV status:"
+          oc get pv || true
 
       - name: Teardown NFS Test
         if: github.event.inputs.action == 'teardown'

@@ -1,14 +1,15 @@
-# NFS server configuration
-nfs:
-  server: ""  # Will be set from NFS_SERVER_IP secret
-  path: "/exports/ndex/data"
-
 # Namespace configuration
 namespace: "bell-test"
 
+# PersistentVolumeClaim configuration for dynamic provisioning
+pvc:
+  name: "nfs-dynamic-pvc"
+  storage: "1Gi"
+  storageClassName: "nfs-csi"  # Uses nfs-csi StorageClass for dynamic provisioning
+
 # Pod configuration
 pod:
-  name: "nfs-csi-test-pod"
+  name: "nfs-dynamic-test-pod"
   image: "registry.access.redhat.com/ubi8/ubi:latest"
   mountPath: "/mnt/nfs"
 
@@ -16,8 +17,11 @@ pod:
 serviceAccount:
   name: "nfs-sa"
 
-# CSI inline volume configuration
-# No PV or PVC needed - volume is created inline in the pod spec
-# Requires nfs.csi.k8s.io CSI driver to be installed in the cluster
+# Dynamic NFS Provisioning
+# - Uses nfs-csi StorageClass (must be pre-created by cluster admin)
+# - PV is automatically created when PVC is created
+# - No manual PV creation needed
+# - Works with restricted pod security (no inline volume)
+# - Automatic cleanup when PVC is deleted
 
 # Made with Bob

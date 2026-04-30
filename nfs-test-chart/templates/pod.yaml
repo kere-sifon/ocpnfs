@@ -44,10 +44,7 @@ spec:
       mountPath: {{ .Values.pod.mountPath }}
   volumes:
   - name: nfs-volume
-    csi:
-      driver: nfs.csi.k8s.io
-      volumeAttributes:
-        server: {{ .Values.nfs.server }}
-        share: {{ .Values.nfs.path }}
+    persistentVolumeClaim:
+      claimName: {{ .Values.pvc.name }}
 
 # Made with Bob
