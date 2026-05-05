@@ -1,11 +1,6 @@
 name: Elasticsearch Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'elasticsearch-chart/**'
   workflow_dispatch:
     inputs:
       action:

@@ -1,11 +1,6 @@
 name: Logstash Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'logstash-chart/**'
   workflow_dispatch:
     inputs:
       action:

@@ -1,11 +1,6 @@
 name: Kibana Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'kibana-chart/**'
   workflow_dispatch:
     inputs:
       action:
