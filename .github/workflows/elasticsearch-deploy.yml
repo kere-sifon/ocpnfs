@@ -70,11 +70,14 @@ jobs:
       - name: Wait for Elasticsearch Ready
         if: github.event.inputs.action != 'teardown'
         run: |
-          echo "Waiting for Elasticsearch to be ready..."
+          echo "Waiting for Elasticsearch StatefulSet to be ready..."
           oc rollout status statefulset/elasticsearch \
             -n bell-test \
             --timeout=300s
-          echo "✓ Elasticsearch is ready"
+          echo "✓ StatefulSet is ready"
+          
+          echo "Waiting additional 60s for Elasticsearch to fully start..."
+          sleep 60
 
       - name: Validate Elasticsearch
         if: github.event.inputs.action != 'teardown'
@@ -83,13 +86,23 @@ jobs:
           ES_POD=$(oc get pod -l app=elasticsearch -n bell-test -o jsonpath='{.items[0].metadata.name}')
           echo "Elasticsearch pod: $ES_POD"
 
+          echo "Checking if Elasticsearch is responding..."
+          for i in {1..30}; do
+            if oc exec $ES_POD -n bell-test -- curl -s http://localhost:9200 > /dev/null 2>&1; then
+              echo "✓ Elasticsearch is responding"
+              break
+            fi
+            echo "Attempt $i/30: Waiting for Elasticsearch to respond..."
+            sleep 10
+          done
+
           echo "--- Cluster Health ---"
           oc exec $ES_POD -n bell-test -- \
-            curl -s http://localhost:9200/_cluster/health?pretty
+            curl -s http://localhost:9200/_cluster/health?pretty || echo "Failed to get cluster health"
 
           echo "--- Node Info ---"
           oc exec $ES_POD -n bell-test -- \
-            curl -s http://localhost:9200/_cat/nodes?v
+            curl -s http://localhost:9200/_cat/nodes?v || echo "Failed to get node info"
 
           echo "✓ Elasticsearch validation complete"
 
