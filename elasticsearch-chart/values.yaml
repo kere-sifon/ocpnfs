@@ -14,7 +14,7 @@ image:
 clusterName: elasticsearch-cluster
 
 # Java options
-javaOpts: "-Xms1g -Xmx1g"
+javaOpts: "-Xms256m -Xmx512m"
 
 # Service configuration
 service:
@@ -24,11 +24,11 @@ service:
 # Resource limits
 resources:
   requests:
-    memory: "2Gi"
-    cpu: "1000m"
+    memory: "512Mi"
+    cpu: "250m"
   limits:
-    memory: "2Gi"
-    cpu: "1000m"
+    memory: "1Gi"
+    cpu: "500m"
 
 # Persistence configuration
 persistence:

@@ -14,7 +14,7 @@ image:
 elasticsearchHosts: "http://elasticsearch:9200"
 
 # Java options
-javaOpts: "-Xms512m -Xmx512m"
+javaOpts: "-Xms128m -Xmx256m"
 
 # Service configuration
 service:
@@ -25,11 +25,11 @@ service:
 # Resource limits
 resources:
   requests:
-    memory: "1Gi"
-    cpu: "500m"
+    memory: "256Mi"
+    cpu: "100m"
   limits:
-    memory: "1Gi"
-    cpu: "500m"
+    memory: "512Mi"
+    cpu: "250m"
 
 # Persistence configuration
 persistence:
