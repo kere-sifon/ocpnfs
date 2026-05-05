@@ -15,20 +15,37 @@ spec:
         app: {{ .Values.name }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
-      - name: increase-vm-max-map
+      - name: configure-sysctl
         image: busybox
-        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        command: ['sh', '-c', 'echo "vm.max_map_count should be set to 262144 on the host"']
         securityContext:
-          privileged: true
-      - name: increase-fd-ulimit
-        image: busybox
-        command: ["sh", "-c", "ulimit -n 65536"]
-        securityContext:
-          privileged: true
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
       containers:
       - name: elasticsearch
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
         ports:
         - containerPort: 9200
           name: http
