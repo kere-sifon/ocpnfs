@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}-config
+  namespace: {{ .Values.namespace }}
+data:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    
+    filter {
+      # Add your filters here
+    }
+    
+    output {
+      elasticsearch {
+        hosts => ["{{ .Values.elasticsearchHosts }}"]
+        index => "logstash-%{+YYYY.MM.dd}"
+      }
+    }
+
+# Made with Bob

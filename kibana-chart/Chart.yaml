@@ -1,0 +1,8 @@
+apiVersion: v2
+name: kibana
+description: Kibana Helm chart with NFS storage
+type: application
+version: 1.0.0
+appVersion: "8.11.0"
+
+# Made with Bob
