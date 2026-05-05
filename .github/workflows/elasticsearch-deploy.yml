@@ -51,8 +51,20 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "Cleaning up existing Elasticsearch resources..."
-          oc delete deployment elasticsearch --ignore-not-found=true -n bell-test
-          sleep 5
+          
+          # Check for existing Helm release
+          if helm list -n bell-test | grep -q elasticsearch; then
+            echo "Found existing Helm release, uninstalling..."
+            helm uninstall elasticsearch -n bell-test --wait || true
+            sleep 10
+          fi
+          
+          # Delete any remaining resources
+          oc delete statefulset elasticsearch --ignore-not-found=true -n bell-test
+          oc delete pod -l app=elasticsearch --ignore-not-found=true -n bell-test
+          
+          echo "Waiting for cleanup to complete..."
+          sleep 15
           echo "✓ Cleanup completed"
 
       - name: Deploy Elasticsearch
@@ -112,13 +124,23 @@ jobs:
           echo "=== Debugging Elasticsearch ==="
           oc get pods -n bell-test -l app=elasticsearch
           echo ""
+          echo "=== StatefulSet Description ==="
           oc describe statefulset elasticsearch -n bell-test || true
           echo ""
-          oc logs statefulset/elasticsearch -n bell-test --tail=50 || true
+          echo "=== Pod Description ==="
+          oc describe pod -l app=elasticsearch -n bell-test || true
           echo ""
+          echo "=== Container Logs ==="
+          oc logs -l app=elasticsearch -n bell-test --tail=100 --all-containers=true || true
+          echo ""
+          echo "=== Previous Container Logs (if crashed) ==="
+          oc logs -l app=elasticsearch -n bell-test --previous --tail=100 || true
+          echo ""
+          echo "=== PVCs ==="
           oc get pvc -n bell-test || true
           echo ""
-          oc get events -n bell-test --sort-by='.lastTimestamp' | tail -20
+          echo "=== Recent Events ==="
+          oc get events -n bell-test --sort-by='.lastTimestamp' | tail -30
 
       - name: Teardown Elasticsearch
         if: github.event.inputs.action == 'teardown'
