@@ -1,26 +1,45 @@
-# Namespace configuration
-namespace: "bell-test"
-
 # Logstash configuration
-logstash:
-  name: "logstash"
-  image: "docker.elastic.co/logstash/logstash"
-  tag: "8.13.0"
-  beatsPort: 5044
-  monitoringPort: 9600
-  memory: "1Gi"
-  cpu: "500m"
+name: logstash
+namespace: bell-test
 
-  # Elasticsearch target
-  # Local PoC: points at local Elasticsearch deployment
-  # Bell EDP: swap for EDP endpoint and uncomment auth settings
-  elasticsearch:
-    host: "http://elasticsearch:9200"
-    # host: "https://edp-elasticsearch.bell.internal:9200"
-    index: "ndex-logs-%{+YYYY.MM.dd}"
-    # apiKey: ""        # Set via secret for EDP auth
-    # ssl: false        # Set to true for EDP
+# Replica configuration
+replicaCount: 1
+
+# Image configuration
+image:
+  repository: docker.elastic.co/logstash/logstash
+  tag: "8.13.0"
+
+# Elasticsearch connection
+elasticsearchHosts: "http://elasticsearch:9200"
+
+# Java options
+javaOpts: "-Xms512m -Xmx512m"
+
+# Service configuration
+service:
+  type: ClusterIP
+  beatsPort: 5044
+  httpPort: 9600
+
+# Resource limits
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+
+# Persistence configuration
+persistence:
+  accessModes:
+    - ReadWriteOnce
+  storageClass: nfs-csi
+  size: 2Gi
 
 # ServiceAccount configuration
 serviceAccount:
-  name: "logstash-sa"
+  name: logstash-sa
+
+# Made with Bob

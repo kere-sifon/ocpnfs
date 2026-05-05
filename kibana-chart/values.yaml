@@ -1,20 +1,41 @@
-# Namespace configuration
-namespace: "bell-test"
-
 # Kibana configuration
-kibana:
-  name: "kibana"
-  image: "docker.elastic.co/kibana/kibana"
-  tag: "8.13.0"
-  port: 5601
-  memory: "1Gi"
-  cpu: "500m"
+name: kibana
+namespace: bell-test
 
-  # Elasticsearch target - must match elasticsearch-chart or EDP endpoint
-  elasticsearch:
-    host: "http://elasticsearch:9200"
-    # host: "https://edp-elasticsearch.bell.internal:9200"  # Bell EDP
+# Replica configuration
+replicaCount: 1
+
+# Image configuration
+image:
+  repository: docker.elastic.co/kibana/kibana
+  tag: "8.13.0"
+
+# Elasticsearch connection
+elasticsearchHosts: "http://elasticsearch:9200"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5601
+
+# Resource limits
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+
+# Persistence configuration
+persistence:
+  accessModes:
+    - ReadWriteOnce
+  storageClass: nfs-csi
+  size: 2Gi
 
 # ServiceAccount configuration
 serviceAccount:
-  name: "kibana-sa"
+  name: kibana-sa
+
+# Made with Bob
