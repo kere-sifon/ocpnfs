@@ -1,0 +1,26 @@
+# Namespace configuration
+namespace: "bell-test"
+
+# Logstash configuration
+logstash:
+  name: "logstash"
+  image: "docker.elastic.co/logstash/logstash"
+  tag: "8.13.0"
+  beatsPort: 5044
+  monitoringPort: 9600
+  memory: "1Gi"
+  cpu: "500m"
+
+  # Elasticsearch target
+  # Local PoC: points at local Elasticsearch deployment
+  # Bell EDP: swap for EDP endpoint and uncomment auth settings
+  elasticsearch:
+    host: "http://elasticsearch:9200"
+    # host: "https://edp-elasticsearch.bell.internal:9200"
+    index: "ndex-logs-%{+YYYY.MM.dd}"
+    # apiKey: ""        # Set via secret for EDP auth
+    # ssl: false        # Set to true for EDP
+
+# ServiceAccount configuration
+serviceAccount:
+  name: "logstash-sa"

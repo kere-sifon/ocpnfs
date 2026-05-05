@@ -1,0 +1,20 @@
+# Namespace configuration
+namespace: "bell-test"
+
+# Kibana configuration
+kibana:
+  name: "kibana"
+  image: "docker.elastic.co/kibana/kibana"
+  tag: "8.13.0"
+  port: 5601
+  memory: "1Gi"
+  cpu: "500m"
+
+  # Elasticsearch target - must match elasticsearch-chart or EDP endpoint
+  elasticsearch:
+    host: "http://elasticsearch:9200"
+    # host: "https://edp-elasticsearch.bell.internal:9200"  # Bell EDP
+
+# ServiceAccount configuration
+serviceAccount:
+  name: "kibana-sa"

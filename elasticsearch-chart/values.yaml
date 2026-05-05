@@ -1,0 +1,23 @@
+# Namespace configuration
+namespace: "bell-test"
+
+# Elasticsearch configuration
+elasticsearch:
+  name: "elasticsearch"
+  image: "docker.elastic.co/elasticsearch/elasticsearch"
+  tag: "8.13.0"
+  port: 9200
+  transportPort: 9300
+  memory: "2Gi"
+  cpu: "1000m"
+  pvc:
+    name: "elasticsearch-pvc"
+    storage: "5Gi"
+    storageClassName: "nfs-csi"   # Dynamic NFS StorageClass - swap for Bell CaaS storageClassName
+    # For static PV approach uncomment below:
+    # storageClassName: ""
+    # volumeName: "elasticsearch-nfs-pv"
+
+# ServiceAccount configuration
+serviceAccount:
+  name: "elasticsearch-sa"
