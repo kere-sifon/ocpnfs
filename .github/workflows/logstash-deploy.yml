@@ -42,7 +42,7 @@ jobs:
           oc login --token=${{ secrets.OPENSHIFT_TOKEN }} \
             --server=${{ secrets.OPENSHIFT_SERVER }} \
             --insecure-skip-tls-verify=true
-          oc project ${{ secrets.OPENSHIFT_PROJECT }}
+          oc project bell-test
 
           oc whoami
           echo "✓ Successfully logged in to OpenShift"
@@ -51,7 +51,7 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "Verifying Elasticsearch is available..."
-          ES_POD=$(oc get pod -l app=elasticsearch -n ${{ secrets.OPENSHIFT_PROJECT }} -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          ES_POD=$(oc get pod -l app=elasticsearch -n bell-test -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
           if [ -z "$ES_POD" ]; then
             echo "Error: Elasticsearch is not running. Deploy elasticsearch-chart first."
             exit 1
@@ -62,8 +62,8 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "Cleaning up existing Logstash resources..."
-          oc delete pod ndex-app-test --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
-          oc delete deployment logstash --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
+          oc delete pod ndex-app-test --ignore-not-found=true -n bell-test
+          oc delete deployment logstash --ignore-not-found=true -n bell-test
           sleep 5
           echo "✓ Cleanup completed"
 
@@ -73,7 +73,7 @@ jobs:
           echo "=== Deploying Logstash ==="
 
           helm upgrade --install ${{ env.RELEASE_NAME }} ${{ env.CHART_PATH }} \
-            --set namespace=${{ secrets.OPENSHIFT_PROJECT }} \
+            --set namespace=bell-test \
             --timeout=10m \
             --wait
 
@@ -84,7 +84,7 @@ jobs:
         run: |
           echo "Waiting for Logstash to be ready..."
           oc rollout status deployment/logstash \
-            -n ${{ secrets.OPENSHIFT_PROJECT }} \
+            -n bell-test \
             --timeout=300s
           echo "✓ Logstash is ready"
 
@@ -92,11 +92,11 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "=== Validating Logstash Pipeline ==="
-          LS_POD=$(oc get pod -l app=logstash -n ${{ secrets.OPENSHIFT_PROJECT }} -o jsonpath='{.items[0].metadata.name}')
+          LS_POD=$(oc get pod -l app=logstash -n bell-test -o jsonpath='{.items[0].metadata.name}')
           echo "Logstash pod: $LS_POD"
 
           echo "--- Pipeline Stats ---"
-          oc exec $LS_POD -n ${{ secrets.OPENSHIFT_PROJECT }} -- \
+          oc exec $LS_POD -n bell-test -- \
             curl -s http://localhost:9600/_node/stats/pipelines?pretty | head -40 || true
 
           echo "✓ Logstash pipeline validation complete"
@@ -105,58 +105,51 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "=== Checking Log Flow to Elasticsearch ==="
-          echo "Waiting 30s for test pod logs to flow through pipeline..."
+          echo "Waiting 30s for logs to flow through pipeline..."
           sleep 30
 
-          ES_POD=$(oc get pod -l app=elasticsearch -n ${{ secrets.OPENSHIFT_PROJECT }} -o jsonpath='{.items[0].metadata.name}')
+          ES_POD=$(oc get pod -l app=elasticsearch -n bell-test -o jsonpath='{.items[0].metadata.name}')
 
-          echo "--- Checking ndex-logs index ---"
-          oc exec $ES_POD -n ${{ secrets.OPENSHIFT_PROJECT }} -- \
-            curl -s "http://localhost:9200/_cat/indices/ndex-logs-*?v" || true
+          echo "--- Checking logstash indices ---"
+          oc exec $ES_POD -n bell-test -- \
+            curl -s "http://localhost:9200/_cat/indices/logstash-*?v" || true
 
           echo "--- Sample log entries ---"
-          oc exec $ES_POD -n ${{ secrets.OPENSHIFT_PROJECT }} -- \
-            curl -s "http://localhost:9200/ndex-logs-*/_search?size=3&pretty" || true
+          oc exec $ES_POD -n bell-test -- \
+            curl -s "http://localhost:9200/logstash-*/_search?size=3&pretty" || true
 
       - name: Print Logs
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "=== Logstash Logs ==="
-          oc logs deployment/logstash -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=50 || true
-          echo ""
-          echo "=== Test Pod - NDEX App Logs ==="
-          oc logs ndex-app-test -c ndex-app -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=20 || true
-          echo ""
-          echo "=== Test Pod - Filebeat Sidecar Logs ==="
-          oc logs ndex-app-test -c filebeat -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=20 || true
+          oc logs deployment/logstash -n bell-test --tail=50 || true
 
       - name: Debug on failure
         if: failure()
         run: |
           echo "=== Debugging Logstash ==="
-          oc get pods -n ${{ secrets.OPENSHIFT_PROJECT }}
+          oc get pods -n bell-test
           echo ""
-          oc describe deployment logstash -n ${{ secrets.OPENSHIFT_PROJECT }} || true
+          oc describe deployment logstash -n bell-test || true
           echo ""
-          oc logs deployment/logstash -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=100 || true
+          oc logs deployment/logstash -n bell-test --tail=100 || true
           echo ""
-          oc get events -n ${{ secrets.OPENSHIFT_PROJECT }} --sort-by='.lastTimestamp' | tail -20
+          oc get events -n bell-test --sort-by='.lastTimestamp' | tail -20
 
       - name: Teardown Logstash
         if: github.event.inputs.action == 'teardown'
         run: |
           echo "=== Tearing Down Logstash ==="
-          oc delete pod ndex-app-test --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
-          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ secrets.OPENSHIFT_PROJECT }} || echo "Release not found"
+          helm uninstall ${{ env.RELEASE_NAME }} -n bell-test || echo "Release not found"
           echo "✓ Teardown completed"
 
       - name: Deployment Summary
         if: always() && github.event.inputs.action != 'teardown'
         run: |
           echo "=== Logstash Deployment Summary ==="
-          echo "Namespace: ${{ secrets.OPENSHIFT_PROJECT }}"
+          echo "Namespace: bell-test"
           echo "Release: ${{ env.RELEASE_NAME }}"
           echo ""
-          oc get deployment,pod,svc \
-            -l app.kubernetes.io/instance=${{ env.RELEASE_NAME }} \
-            -n ${{ secrets.OPENSHIFT_PROJECT }} || true
+          oc get deployment,pod,svc,pvc \
+            -l app=logstash \
+            -n bell-test || true

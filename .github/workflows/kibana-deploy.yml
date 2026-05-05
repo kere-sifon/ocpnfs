@@ -42,7 +42,7 @@ jobs:
           oc login --token=${{ secrets.OPENSHIFT_TOKEN }} \
             --server=${{ secrets.OPENSHIFT_SERVER }} \
             --insecure-skip-tls-verify=true
-          oc project ${{ secrets.OPENSHIFT_PROJECT }}
+          oc project bell-test
 
           oc whoami
           echo "✓ Successfully logged in to OpenShift"
@@ -51,7 +51,7 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "Verifying Elasticsearch is available..."
-          ES_POD=$(oc get pod -l app=elasticsearch -n ${{ secrets.OPENSHIFT_PROJECT }} -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          ES_POD=$(oc get pod -l app=elasticsearch -n bell-test -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
           if [ -z "$ES_POD" ]; then
             echo "Error: Elasticsearch is not running. Deploy elasticsearch-chart first."
             exit 1
@@ -62,7 +62,7 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "Cleaning up existing Kibana resources..."
-          oc delete deployment kibana --ignore-not-found=true -n ${{ secrets.OPENSHIFT_PROJECT }}
+          oc delete deployment kibana --ignore-not-found=true -n bell-test
           sleep 5
           echo "✓ Cleanup completed"
 
@@ -72,7 +72,7 @@ jobs:
           echo "=== Deploying Kibana ==="
 
           helm upgrade --install ${{ env.RELEASE_NAME }} ${{ env.CHART_PATH }} \
-            --set namespace=${{ secrets.OPENSHIFT_PROJECT }} \
+            --set namespace=bell-test \
             --timeout=10m \
             --wait
 
@@ -83,7 +83,7 @@ jobs:
         run: |
           echo "Waiting for Kibana to be ready..."
           oc rollout status deployment/kibana \
-            -n ${{ secrets.OPENSHIFT_PROJECT }} \
+            -n bell-test \
             --timeout=300s
           echo "✓ Kibana is ready"
 
@@ -91,11 +91,11 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "=== Validating Kibana ==="
-          KIBANA_POD=$(oc get pod -l app=kibana -n ${{ secrets.OPENSHIFT_PROJECT }} -o jsonpath='{.items[0].metadata.name}')
+          KIBANA_POD=$(oc get pod -l app=kibana -n bell-test -o jsonpath='{.items[0].metadata.name}')
           echo "Kibana pod: $KIBANA_POD"
 
           echo "--- Kibana Status ---"
-          oc exec $KIBANA_POD -n ${{ secrets.OPENSHIFT_PROJECT }} -- \
+          oc exec $KIBANA_POD -n bell-test -- \
             curl -s http://localhost:5601/api/status | grep -o '"level":"[^"]*"' | head -5 || true
 
           echo "✓ Kibana validation complete"
@@ -104,35 +104,39 @@ jobs:
         if: github.event.inputs.action != 'teardown'
         run: |
           echo "=== Kibana Access ==="
-          KIBANA_URL=$(oc get route kibana -n ${{ secrets.OPENSHIFT_PROJECT }} -o jsonpath='{.spec.host}')
-          echo "✓ Kibana available at: https://$KIBANA_URL"
+          KIBANA_URL=$(oc get route kibana -n bell-test -o jsonpath='{.spec.host}' 2>/dev/null || echo "No route found")
+          if [ "$KIBANA_URL" != "No route found" ]; then
+            echo "✓ Kibana available at: https://$KIBANA_URL"
+          else
+            echo "Note: No route configured. Access via service or create route manually."
+          fi
 
       - name: Debug on failure
         if: failure()
         run: |
           echo "=== Debugging Kibana ==="
-          oc get pods -n ${{ secrets.OPENSHIFT_PROJECT }} -l app=kibana
+          oc get pods -n bell-test -l app=kibana
           echo ""
-          oc describe deployment kibana -n ${{ secrets.OPENSHIFT_PROJECT }} || true
+          oc describe deployment kibana -n bell-test || true
           echo ""
-          oc logs deployment/kibana -n ${{ secrets.OPENSHIFT_PROJECT }} --tail=50 || true
+          oc logs deployment/kibana -n bell-test --tail=50 || true
           echo ""
-          oc get events -n ${{ secrets.OPENSHIFT_PROJECT }} --sort-by='.lastTimestamp' | tail -20
+          oc get events -n bell-test --sort-by='.lastTimestamp' | tail -20
 
       - name: Teardown Kibana
         if: github.event.inputs.action == 'teardown'
         run: |
           echo "=== Tearing Down Kibana ==="
-          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ secrets.OPENSHIFT_PROJECT }} || echo "Release not found"
+          helm uninstall ${{ env.RELEASE_NAME }} -n bell-test || echo "Release not found"
           echo "✓ Teardown completed"
 
       - name: Deployment Summary
         if: always() && github.event.inputs.action != 'teardown'
         run: |
           echo "=== Kibana Deployment Summary ==="
-          echo "Namespace: ${{ secrets.OPENSHIFT_PROJECT }}"
+          echo "Namespace: bell-test"
           echo "Release: ${{ env.RELEASE_NAME }}"
           echo ""
-          oc get deployment,pod,svc,route \
-            -l app.kubernetes.io/instance=${{ env.RELEASE_NAME }} \
-            -n ${{ secrets.OPENSHIFT_PROJECT }} || true
+          oc get deployment,pod,svc,pvc \
+            -l app=kibana \
+            -n bell-test || true
