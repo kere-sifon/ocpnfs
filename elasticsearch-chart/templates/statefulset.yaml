@@ -13,14 +13,24 @@ spec:
     metadata:
       labels:
         app: {{ .Values.name }}
-      # annotations:
-      #   k8s.v1.cni.cncf.io/networks: '[]'
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+      - name: configure-sysctl
+        image: busybox
+        command: ['sh', '-c', 'echo "vm.max_map_count should be set to 262144 on the host"']
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
       containers:
       - name: elasticsearch
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}

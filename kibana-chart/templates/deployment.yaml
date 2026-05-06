@@ -12,8 +12,6 @@ spec:
     metadata:
       labels:
         app: {{ .Values.name }}
-      annotations:
-        k8s.v1.cni.cncf.io/networks: '[]'
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
       securityContext:
