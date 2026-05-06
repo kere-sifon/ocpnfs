@@ -71,6 +71,21 @@ jobs:
           sleep 20
           echo "✓ Cleanup completed"
 
+      - name: Verify StorageClass
+        if: github.event.inputs.action != 'teardown'
+        run: |
+          echo "=== Verifying StorageClass ==="
+          if oc get storageclass nfs-csi > /dev/null 2>&1; then
+            echo "✓ StorageClass 'nfs-csi' exists"
+            oc get storageclass nfs-csi
+          else
+            echo "⚠ StorageClass 'nfs-csi' not found"
+            echo "Available StorageClasses:"
+            oc get storageclass
+            echo ""
+            echo "Note: Update values.yaml with an available StorageClass or create nfs-csi StorageClass"
+          fi
+
       - name: Deploy Elasticsearch
         if: github.event.inputs.action != 'teardown'
         run: |
@@ -82,6 +97,20 @@ jobs:
             --wait
 
           echo "✓ Elasticsearch deployed successfully"
+
+      - name: Check PVC Status
+        if: github.event.inputs.action != 'teardown'
+        run: |
+          echo "=== Checking PVC Status ==="
+          oc get pvc -n bell-test -l app=elasticsearch
+          
+          PVC_STATUS=$(oc get pvc -n bell-test -l app=elasticsearch -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
+          echo "PVC Status: $PVC_STATUS"
+          
+          if [ "$PVC_STATUS" != "Bound" ]; then
+            echo "⚠ PVC is not bound. Checking events..."
+            oc describe pvc -n bell-test -l app=elasticsearch
+          fi
 
       - name: Wait for Elasticsearch Ready
         if: github.event.inputs.action != 'teardown'
